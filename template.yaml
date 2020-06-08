@@ -76,7 +76,7 @@ Parameters:
     AllowedPattern: '[a-z0-9_]*'
     MinLength: 0
     MaxLength: 128
-    Description: Prefix for the AWS Glue table that's created once you run your crawler. Characters are limited to lowercase and numbers to accomodate AWS Glue's allowed nomenclature. 
+    Description: Prefix for the AWS Glue table that's created once you run your crawler. Characters are limited to lowercase, numbers, and underscores to accomodate AWS Glue's allowed nomenclature. 
 Conditions:
   AutoGenerateBucketName:
     !Equals [ !Ref BucketName, '' ]
