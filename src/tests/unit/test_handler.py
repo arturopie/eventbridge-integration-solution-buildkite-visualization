@@ -1,0 +1,65 @@
+import json
+
+import pytest
+
+from src.job_finished import app
+
+
+@pytest.fixture()
+def eventbridge_event():
+    """ Generates EventBridge Event"""
+
+    return {
+        "detail-type": "Job Finished",
+        "detail": {
+            "version": 1,
+            "job": {
+                "uuid": "9e6c3f19-4fdb-4e8e-b925-28cd7504e17f",
+                "graphql_id": "Sm9iLS0tOWU2YzNmMTktNGZkYi00ZThlLWI5MjUtMjhjZDc1MDRlMTdm",
+                "type": "script",
+                "label": ":nodejs: Test",
+                "step_key": "node_test",
+                "command": "yarn test",
+                "agent_query_rules": [
+                    "queue=default"
+                ],
+                "exit_status": 0,
+                "passed": true,
+                "soft_failed": false,
+                "state": "finished",
+                "runnable_at": "2019-08-11 06:01:14 UTC",
+                "started_at": "2019-08-11 06:01:16 UTC",
+                "finished_at": "2019-08-11 06:01:35 UTC"
+            },
+            "build": {
+                "uuid": "8fcaa7b9-e175-4110-9f48-f79949806a31",
+                "graphql_id": "QnVpbGQtLS04ZmNhYTdiOS1lMTc1LTQxMTAtOWY0OC1mNzk5NDk4MDZhMzE=",
+                "number": 123456,
+                "commit": "5a741616cdf07dc87c5adafe784321eeeb639e33",
+                "message": "Merge pull request #456 from my-org/chore/update-deps",
+                "branch": "master",
+                "state": "started",
+                "source": "webhook"
+            },
+            "pipeline": {
+                "uuid": "88d73553-5533-4f56-9c16-fb38d7817d8f",
+                "graphql_id": "UGlwZWxpbmUtLS04OGQ3MzU1My01NTMzLTRmNTYtOWMxNi1mYjM4ZDc4MTdkOGY=",
+                "slug": "my-pipeline"
+            },
+            "organization": {
+                "uuid": "a98961b7-adc1-41aa-8726-cfb2c46e42e0",
+                "graphql_id": "T3JnYW5pemF0aW9uLS0tYTk4OTYxYjctYWRjMS00MWFhLTg3MjYtY2ZiMmM0NmU0MmUw",
+                "slug": "my-org"
+            }
+        }
+    }
+
+
+def test_lambda_handler(eventbridge_event, mocker):
+
+    ret = app.lambda_handler(eventbridge_event, "")
+    data = json.loads(ret["body"])
+
+    assert ret["statusCode"] == 200
+    assert "message" in ret["body"]
+    assert data["message"] == "event received"

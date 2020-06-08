@@ -1,0 +1,221 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  eventbridge-integration-solution-buildkite-visualization
+
+  (qs-1qpmasrtu)
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: Amazon-EventBridge-Integration-Solution-Buildkite-Visualization
+    Description: This application demonstrates an integration with AWS Lambda, Amazon S3, AWS Glue, and Amazon Athena, for the Buildkite Amazon EventBridge Integration
+    Author: AWS Quick Start
+    LicenseUrl: LICENSE
+    ReadmeUrl: README.md
+    Labels: ['amazon', 'eventbridge', 'integration', 'solution', 'aws','lambda', 'glue', 'athena', 's3', 'buildkite']
+    HomePageUrl: https://aws.amazon.com/quickstart/eventbridge/buildkite-visualization
+    SemanticVersion: 0.1.2
+    SourceCodeUrl: https://github.com/aws-quickstart/eventbridge-integration-solution-buildkite-visualization
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Amazon EventBridge Integration Solution
+      Parameters:
+      - EventSourceName
+    - Label:
+        default: Amazon S3
+      Parameters:
+      - BucketName
+    - Label:
+        default: AWS Glue Constructs
+      Parameters:
+      - GlueCrawlerName
+      - GlueDBName 
+      - GlueTablePrefix
+    ParameterLabels:
+      EventSourceName:
+        default: Event Source Name
+      BucketName:
+        default: Bucket Name
+
+Parameters:
+  EventSourceName:
+    Type: String
+    AllowedPattern: aws\.partner(/[\.\-_A-Za-z0-9]+){2,}
+    MinLength: 1
+    MaxLength: 256
+    Description: Name of the Buildkite Partner Event Source to associate with an Event Bus. For example, aws.partner/buildkite.com/<org-slug>/<uuid>
+  BucketName:
+    Type: String
+    Default: ''
+    AllowedPattern: '[a-z0-9-]*'
+    MaxLength: 63
+    Description: Name of the Amazon S3 Bucket to create. Leave blank for an automatically generated name. Characters are limited to lowercase, numbers, and dashes to accomodate AWS Glue's allowed nomenclature.
+  GlueCrawlerName:
+    Type: String
+    Default: buildkite-crawler
+    AllowedPattern: '[a-z0-9-]*'
+    MaxLength: 63
+    Description: Name of the AWS Glue Crawler to create. Characters are limited to lowercase, numbers, and dashes to accomodate AWS Glue's allowed nomenclature. 
+  GlueDBName:
+    Type: String
+    Default: buildkite-db
+    AllowedPattern: '[a-z0-9-]*'
+    MaxLength: 63
+    Description: Name of the AWS Glue DB to create. Characters are limited to lowercase, numbers, and dashes to accomodate AWS Glue's allowed nomenclature. 
+  GlueTablePrefix:
+    Type: String
+    Default: crawler
+    AllowedPattern: '[a-z0-9]*'
+    MaxLength: 63
+    Description: Prefix for the AWS Glue table that's created once you run your crawler. Characters are limited to lowercase and numbers to accomodate AWS Glue's allowed nomenclature. 
+Conditions:
+  AutoGenerateBucketName:
+    !Equals [ !Ref BucketName, '' ]
+
+Resources:
+  EventBridgeEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      EventSourceName: !Ref EventSourceName
+      Name: !Ref EventSourceName
+
+  EventBridgeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/job_finished/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Environment:
+        Variables:
+          s3bucket: !Ref S3Bucket
+      Policies:
+      - S3WritePolicy:
+          BucketName: !Ref S3Bucket
+      Events:
+        EventBridgeRule:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              account:
+              - !Ref AWS::AccountId
+              detail-type:
+              - Job Finished
+            EventBusName: !Ref EventBridgeEventBus
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      BucketName:
+        !If [ AutoGenerateBucketName, !Ref 'AWS::NoValue', !Ref BucketName ]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  BuildkiteCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: !Ref GlueCrawlerName
+      Role: !GetAtt CrawlerRole.Arn
+      DatabaseName: !Ref BuildkiteDB
+      Classifiers:
+      - !Ref JsonClassifier
+      TablePrefix: !Join ['_' , [!Ref GlueTablePrefix, ]]
+      Targets:
+        S3Targets:
+        - Path: !Ref S3Bucket
+
+  BuildkiteDB:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Ref GlueDBName
+        Description: Database with a table that contains job-finished data
+
+  JsonClassifier:
+    Type: AWS::Glue::Classifier
+    Properties:
+      JsonClassifier:
+        Name: JsonClassifier
+        JsonPath: "$[*]"
+
+  CrawlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - glue.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: "root"
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Action:
+            - glue:*
+            - cloudwatch:PutMetricData
+            Resource:
+            - "*"
+          - Effect: Allow
+            Action:
+            - s3:GetBucketLocation
+            - s3:ListBucket
+            - s3:ListAllMyBuckets
+            - s3:GetBucketAcl
+            Resource:
+            - !Sub ${S3Bucket.Arn}
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Resource:
+            - !Sub ${S3Bucket.Arn}/*
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+            - arn:aws:logs:*:*:/aws-glue/*
+
+  AthenaQuery:
+    Type: AWS::Athena::NamedQuery
+    Properties:
+      Database: !Ref BuildkiteDB
+      Description: A query that selects all aggregated data
+      Name: JobFinishedEvents
+      QueryString: !Sub
+      - SELECT * FROM ${GlueTablePrefix}_${CrawlerTable}
+      - CrawlerTable: !Join [ '_', !Split [ '-', !Ref S3Bucket ] ]
+
+
+Outputs:
+  EventBridgeRule:
+    Description: EventBridge Rule ARN
+    Value: !GetAtt EventBridgeFunctionEventBridgeRule.Arn
+  EventBridgeFunction:
+    Description: Lambda Function ARN
+    Value: !GetAtt EventBridgeFunction.Arn
+  EventBridgeEventBus:
+    Description: Event Bus ARN
+    Value: !GetAtt EventBridgeEventBus.Arn
+  S3Bucket:
+    Description: S3 Bucket ARN
+    Value: !GetAtt S3Bucket.Arn
+  CrawlerRole:
+    Description: IAM Role Arn for the Glue Crawler
+    Value: !GetAtt CrawlerRole.Arn
