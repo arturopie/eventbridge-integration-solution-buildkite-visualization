@@ -29,19 +29,19 @@ Metadata:
     - Label:
         default: AWS Glue
       Parameters:
-      - CrawlerName
-      - DBName
-      - TablePrefix
+      - GlueCrawlerName
+      - GlueDBName
+      - GlueTablePrefix
     ParameterLabels:
       EventSourceName:
         default: Event Source Name
       BucketName:
         default: Bucket Name
-      CrawlerName:
+      GlueCrawlerName:
         default: Crawler Name
-      DBName:
+      GlueDBName:
         default: DB Name
-      TablePrefix:
+      GlueTablePrefix:
         default: Table Prefix
       
 
@@ -58,19 +58,19 @@ Parameters:
     AllowedPattern: '[a-z0-9-]*'
     MaxLength: 63
     Description: Name of the Amazon S3 Bucket to create. Leave blank for an automatically generated name. Characters are limited to lowercase, numbers, and dashes to accomodate AWS Glue's allowed nomenclature.
-  CrawlerName:
+  GlueCrawlerName:
     Type: String
     Default: buildkite-crawler
     AllowedPattern: '[a-z0-9-]*'
     MaxLength: 63
     Description: Name of the AWS Glue Crawler to create. Characters are limited to lowercase, numbers, and dashes to accomodate AWS Glue's allowed nomenclature. 
-  DBName:
+  GlueDBName:
     Type: String
     Default: buildkite-db
     AllowedPattern: '[a-z0-9-]*'
     MaxLength: 63
     Description: Name of the AWS Glue DB to create. Characters are limited to lowercase, numbers, and dashes to accomodate AWS Glue's allowed nomenclature. 
-  TablePrefix:
+  GlueTablePrefix:
     Type: String
     Default: crawler_
     AllowedPattern: '[a-z0-9_]*'
@@ -130,12 +130,12 @@ Resources:
   BuildkiteCrawler:
     Type: AWS::Glue::Crawler
     Properties:
-      Name: !Ref CrawlerName
+      Name: !Ref GlueCrawlerName
       Role: !GetAtt CrawlerRole.Arn
       DatabaseName: !Ref BuildkiteDB
       Classifiers:
       - !Ref JsonClassifier
-      TablePrefix: !Ref TablePrefix
+      TablePrefix: !Ref GlueTablePrefix
       Targets:
         S3Targets:
         - Path: !Ref S3Bucket
@@ -145,7 +145,7 @@ Resources:
     Properties:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
-        Name: !Ref DBName
+        Name: !Ref GlueDBName
         Description: Database with a table that contains job-finished data
 
   JsonClassifier:
@@ -207,7 +207,7 @@ Resources:
       Description: A query that selects all aggregated data
       Name: JobFinishedEvents
       QueryString: !Sub
-      - SELECT * FROM ${TablePrefix}${CrawlerTable}
+      - SELECT * FROM ${GlueTablePrefix}${CrawlerTable}
       - CrawlerTable: !Join [ '_', !Split [ '-', !Ref S3Bucket ] ]
 
 
