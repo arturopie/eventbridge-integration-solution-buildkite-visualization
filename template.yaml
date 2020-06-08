@@ -13,7 +13,7 @@ Metadata:
     LicenseUrl: LICENSE
     ReadmeUrl: README.md
     Labels: ['amazon', 'eventbridge', 'integration', 'solution', 'aws','lambda', 'glue', 'athena', 's3', 'buildkite']
-    HomePageUrl: https://aws.amazon.com/quickstart/eventbridge/buildkite-visualization
+    HomePageUrl: https://github.com/aws-quickstart/eventbridge-integration-solution-buildkite-visualization
     SemanticVersion: 0.1.2
     SourceCodeUrl: https://github.com/aws-quickstart/eventbridge-integration-solution-buildkite-visualization
   AWS::CloudFormation::Interface:
@@ -27,16 +27,23 @@ Metadata:
       Parameters:
       - BucketName
     - Label:
-        default: AWS Glue Constructs
+        default: AWS Glue
       Parameters:
-      - GlueCrawlerName
-      - GlueDBName 
-      - GlueTablePrefix
+      - CrawlerName
+      - DBName
+      - TablePrefix
     ParameterLabels:
       EventSourceName:
         default: Event Source Name
       BucketName:
         default: Bucket Name
+      CrawlerName:
+        default: Crawler Name
+      DBName:
+        default: DB Name
+      TablePrefix:
+        default: Table Prefix
+      
 
 Parameters:
   EventSourceName:
@@ -51,23 +58,24 @@ Parameters:
     AllowedPattern: '[a-z0-9-]*'
     MaxLength: 63
     Description: Name of the Amazon S3 Bucket to create. Leave blank for an automatically generated name. Characters are limited to lowercase, numbers, and dashes to accomodate AWS Glue's allowed nomenclature.
-  GlueCrawlerName:
+  CrawlerName:
     Type: String
     Default: buildkite-crawler
     AllowedPattern: '[a-z0-9-]*'
     MaxLength: 63
     Description: Name of the AWS Glue Crawler to create. Characters are limited to lowercase, numbers, and dashes to accomodate AWS Glue's allowed nomenclature. 
-  GlueDBName:
+  DBName:
     Type: String
     Default: buildkite-db
     AllowedPattern: '[a-z0-9-]*'
     MaxLength: 63
     Description: Name of the AWS Glue DB to create. Characters are limited to lowercase, numbers, and dashes to accomodate AWS Glue's allowed nomenclature. 
-  GlueTablePrefix:
+  TablePrefix:
     Type: String
-    Default: crawler
-    AllowedPattern: '[a-z0-9]*'
-    MaxLength: 63
+    Default: crawler_
+    AllowedPattern: '[a-z0-9_]*'
+    MinLength: 0
+    MaxLength: 128
     Description: Prefix for the AWS Glue table that's created once you run your crawler. Characters are limited to lowercase and numbers to accomodate AWS Glue's allowed nomenclature. 
 Conditions:
   AutoGenerateBucketName:
@@ -88,7 +96,7 @@ Resources:
       Runtime: python3.8
       Environment:
         Variables:
-          s3bucket: !Ref S3Bucket
+          s3_bucket: !Ref S3Bucket
       Policies:
       - S3WritePolicy:
           BucketName: !Ref S3Bucket
@@ -122,12 +130,12 @@ Resources:
   BuildkiteCrawler:
     Type: AWS::Glue::Crawler
     Properties:
-      Name: !Ref GlueCrawlerName
+      Name: !Ref CrawlerName
       Role: !GetAtt CrawlerRole.Arn
       DatabaseName: !Ref BuildkiteDB
       Classifiers:
       - !Ref JsonClassifier
-      TablePrefix: !Join ['_' , [!Ref GlueTablePrefix, ]]
+      TablePrefix: !Ref TablePrefix
       Targets:
         S3Targets:
         - Path: !Ref S3Bucket
@@ -137,7 +145,7 @@ Resources:
     Properties:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
-        Name: !Ref GlueDBName
+        Name: !Ref DBName
         Description: Database with a table that contains job-finished data
 
   JsonClassifier:
@@ -161,7 +169,7 @@ Resources:
           - sts:AssumeRole
       Path: /
       Policies:
-      - PolicyName: "root"
+      - PolicyName: "crawler-policy"
         PolicyDocument:
           Version: "2012-10-17"
           Statement:
@@ -199,7 +207,7 @@ Resources:
       Description: A query that selects all aggregated data
       Name: JobFinishedEvents
       QueryString: !Sub
-      - SELECT * FROM ${GlueTablePrefix}_${CrawlerTable}
+      - SELECT * FROM ${TablePrefix}${CrawlerTable}
       - CrawlerTable: !Join [ '_', !Split [ '-', !Ref S3Bucket ] ]
 
 

@@ -33,7 +33,7 @@ def lambda_handler(event, context):
     
     response = s3.put_object(
         Body=output,
-        Bucket=os.environ['s3bucket'],
+        Bucket=os.environ['s3_bucket'],
         Key='buildkite-job-{}'.format(uuid)
     )
     
