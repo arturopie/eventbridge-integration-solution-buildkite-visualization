@@ -13,8 +13,8 @@ Metadata:
     LicenseUrl: LICENSE
     ReadmeUrl: README.md
     Labels: ['amazon', 'eventbridge', 'integration', 'solution', 'aws','lambda', 'glue', 'athena', 's3', 'buildkite']
-    HomePageUrl: https://github.com/aws-quickstart/eventbridge-integration-solution-buildkite-visualization
-    SemanticVersion: 0.1.2
+    HomePageUrl: https://aws.amazon.com/quickstart/eventbridge/buildkite-visualization/
+    SemanticVersion: 0.1.3
     SourceCodeUrl: https://github.com/aws-quickstart/eventbridge-integration-solution-buildkite-visualization
   AWS::CloudFormation::Interface:
     ParameterGroups:
