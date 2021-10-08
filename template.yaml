@@ -91,8 +91,52 @@ Resources:
   EventBridgeFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/job_finished/
-      Handler: app.lambda_handler
+      InlineCode: |
+        import json
+        from datetime import datetime
+        import boto3
+        import os
+
+        s3 = boto3.client('s3')
+
+        def lambda_handler(event, context):
+
+            uuid = event['detail']['job']['uuid']
+
+            start_time = datetime.strptime((event['detail']['job']['started_at'])[:-4], '%Y-%m-%d %H:%M:%S')
+            runnable_time = datetime.strptime((event['detail']['job']['runnable_at'])[:-4], '%Y-%m-%d %H:%M:%S')
+            finish_time = datetime.strptime((event['detail']['job']['finished_at'])[:-4], '%Y-%m-%d %H:%M:%S')
+
+            pipeline = event['detail']['pipeline']['slug']
+            org = event['detail']['organization']['slug']
+            agent_query_rule = event['detail']['job']['agent_query_rules'][0]
+            label = event['detail']['job']['label']
+            passed = event['detail']['job']['passed']
+            state = event['detail']['job']['state']
+
+            output =  json.dumps({
+                "detail-type": "job-finished",
+                "pipeline": pipeline,
+                "org": org,
+                "start_time" : start_time.isoformat(),
+                "runnable_time": runnable_time.isoformat(),
+                "finish_time": finish_time.isoformat(),
+                "agent_query_rule": agent_query_rule,
+                "label": label,
+                "passed": passed,
+                "state": state
+            })
+
+            print(output)
+
+            response = s3.put_object(
+                Body=output,
+                Bucket=os.environ['s3_bucket'],
+                Key='buildkite-job-{}'.format(uuid)
+            )
+
+            print(response)
+      Handler: index.lambda_handler
       Runtime: python3.8
       Environment:
         Variables:

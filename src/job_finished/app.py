@@ -1,3 +1,8 @@
+# ****************************************
+# NOTE: Using inline code in template.yaml
+# ****************************************
+#
+#
 import json
 from datetime import datetime
 import boto3

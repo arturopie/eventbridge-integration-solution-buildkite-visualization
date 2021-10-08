@@ -5,5 +5,18 @@ This Quick Start demonstrates an integration with AWS Lambda, Amazon S3, AWS Glu
 
 ![Quick Start architecture for EventBridge Integration Solution for Buildkite Visualization](https://github.com/aws-quickstart/eventbridge-integration-solution-buildkite-visualization/raw/master/images/arch-eventbridge-buildkite-visualization.png)
 
+## Usage
+
+To create stack
+
+```shell
+aws cloudformation create-stack --stack-name buildkite-visualization --template-body file://template.yaml --parameters ParameterKey=EventSourceName,ParameterValue=aws.partner/buildkite.com/<org-slug>/<id> ParameterKey=BucketName,ParameterValue=buildkite-visualization --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM
+```
+
+To update stack
+
+```shell
+aws cloudformation update-stack --stack-name buildkite-visualization --template-body file://template.yaml --parameters ParameterKey=EventSourceName,ParameterValue=aws.partner/buildkite.com/<org-slug>/<id> ParameterKey=BucketName,ParameterValue=buildkite-visualization --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM
+```
 
 To post feedback, submit feature ideas, or report bugs, use the **Issues** section of [this GitHub repo](https://github.com/aws-quickstart/eventbridge-integration-solution-buildkite-visualization).
