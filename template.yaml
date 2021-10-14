@@ -153,6 +153,10 @@ Resources:
               - !Ref AWS::AccountId
               detail-type:
               - Job Finished
+              detail:
+                pipeline:
+                  slug:
+                    - eco
             EventBusName: !Ref EventBridgeEventBus
 
   S3Bucket:
